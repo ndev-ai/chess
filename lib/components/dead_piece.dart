@@ -13,14 +13,26 @@ class DeadPiece extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.all(2),
+      width: 40,
+      height: 40,
+      margin: const EdgeInsets.symmetric(horizontal: 2),
       decoration: BoxDecoration(
         color: isWhite ? Colors.grey[400] : Colors.grey[600],
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(6),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.2),
+            blurRadius: 2,
+            offset: const Offset(1, 1),
+          ),
+        ],
       ),
-      child: Image.asset(
-        imagePath,
-        color: isWhite ? Colors.white : Colors.black,
+      child: Padding(
+        padding: const EdgeInsets.all(4),
+        child: Image.asset(
+          imagePath,
+          color: isWhite ? Colors.white : Colors.black,
+        ),
       ),
     );
   }
