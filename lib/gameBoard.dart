@@ -37,6 +37,17 @@ class _BoardGameState extends State<BoardGame> {
   List<int> blackKingPosition = [0, 4];
   bool checkStatus = false;
 
+  // En Passant uchun - oxirgi yurish ikki qadam bo'lgan piyodaning pozitsiyasi
+  List<int>? enPassantTarget;
+
+  // Rokada uchun - shoh va tura harakatlangan yoki yo'qligini kuzatish
+  bool whiteKingMoved = false;
+  bool blackKingMoved = false;
+  bool whiteLeftRookMoved = false;
+  bool whiteRightRookMoved = false;
+  bool blackLeftRookMoved = false;
+  bool blackRightRookMoved = false;
+
   @override
   void initState() {
     super.initState();
@@ -180,7 +191,6 @@ class _BoardGameState extends State<BoardGame> {
 
     switch (piece.type) {
       case ChessPiecesType.pawn:
-      case ChessPiecesType.pawn:
         // Check the square immediately in front of the pawn
         if (isInBoard(row + direction, col) &&
             board[row + direction][col] == null) {
@@ -206,6 +216,24 @@ class _BoardGameState extends State<BoardGame> {
             board[row + direction][col + 1] != null &&
             board[row + direction][col + 1]!.isWhite != piece.isWhite) {
           candidateMoves.add([row + direction, col + 1]);
+        }
+
+        // En Passant
+        if (enPassantTarget != null) {
+          // Chapga en passant
+          if (row == enPassantTarget![0] &&
+              col - 1 == enPassantTarget![1] &&
+              board[row][col - 1] != null &&
+              board[row][col - 1]!.isWhite != piece.isWhite) {
+            candidateMoves.add([row + direction, col - 1]);
+          }
+          // O'ngga en passant
+          if (row == enPassantTarget![0] &&
+              col + 1 == enPassantTarget![1] &&
+              board[row][col + 1] != null &&
+              board[row][col + 1]!.isWhite != piece.isWhite) {
+            candidateMoves.add([row + direction, col + 1]);
+          }
         }
         break;
 
@@ -355,6 +383,58 @@ class _BoardGameState extends State<BoardGame> {
           }
           candidateMoves.add([newRow, newCol]);
         }
+
+        // Rokada (Castling)
+        if (piece.isWhite && !whiteKingMoved && !isKingInCheck(true)) {
+          // Oq shoh qisqa rokada (O-O) - o'ng tomonga
+          if (!whiteRightRookMoved &&
+              board[7][5] == null &&
+              board[7][6] == null &&
+              board[7][7]?.type == ChessPiecesType.rook &&
+              board[7][7]?.isWhite == true) {
+            // Shoh o'tadigan kataklar xavfsiz ekanligini tekshirish
+            if (!isSquareUnderAttack(7, 5, true) &&
+                !isSquareUnderAttack(7, 6, true)) {
+              candidateMoves.add([7, 6]); // Qisqa rokada
+            }
+          }
+          // Oq shoh uzun rokada (O-O-O) - chap tomonga
+          if (!whiteLeftRookMoved &&
+              board[7][1] == null &&
+              board[7][2] == null &&
+              board[7][3] == null &&
+              board[7][0]?.type == ChessPiecesType.rook &&
+              board[7][0]?.isWhite == true) {
+            if (!isSquareUnderAttack(7, 2, true) &&
+                !isSquareUnderAttack(7, 3, true)) {
+              candidateMoves.add([7, 2]); // Uzun rokada
+            }
+          }
+        } else if (!piece.isWhite && !blackKingMoved && !isKingInCheck(false)) {
+          // Qora shoh qisqa rokada
+          if (!blackRightRookMoved &&
+              board[0][5] == null &&
+              board[0][6] == null &&
+              board[0][7]?.type == ChessPiecesType.rook &&
+              board[0][7]?.isWhite == false) {
+            if (!isSquareUnderAttack(0, 5, false) &&
+                !isSquareUnderAttack(0, 6, false)) {
+              candidateMoves.add([0, 6]);
+            }
+          }
+          // Qora shoh uzun rokada
+          if (!blackLeftRookMoved &&
+              board[0][1] == null &&
+              board[0][2] == null &&
+              board[0][3] == null &&
+              board[0][0]?.type == ChessPiecesType.rook &&
+              board[0][0]?.isWhite == false) {
+            if (!isSquareUnderAttack(0, 2, false) &&
+                !isSquareUnderAttack(0, 3, false)) {
+              candidateMoves.add([0, 2]);
+            }
+          }
+        }
         break;
 
       default:
@@ -381,9 +461,24 @@ class _BoardGameState extends State<BoardGame> {
   }
 
   void movePiece(int newRow, int newCol) {
-// if the new spot has an enemy piece
+    // En Passant capture - piyoda diagonal bo'sh katak ga yursa
+    if (selectedPiece?.type == ChessPiecesType.pawn &&
+        board[newRow][newCol] == null &&
+        selectedCol != newCol) {
+      // Bu en passant harakati
+      var capturedPiece = board[selectedRow][newCol];
+      if (capturedPiece != null) {
+        if (capturedPiece.isWhite) {
+          whitePiecesTaken.add(capturedPiece);
+        } else {
+          blackPiecesTaken.add(capturedPiece);
+        }
+        board[selectedRow][newCol] = null; // Yonidagi piyodani olib tashlash
+      }
+    }
+
+    // Oddiy capture - agar yangi joyda raqib donasi bo'lsa
     if (board[newRow][newCol] != null) {
-// add the captured piece to the appropriate list
       var capturedPiece = board[newRow][newCol];
       if (capturedPiece!.isWhite) {
         whitePiecesTaken.add(capturedPiece);
@@ -392,16 +487,70 @@ class _BoardGameState extends State<BoardGame> {
       }
     }
 
+    // En Passant target ni yangilash - piyoda 2 qadam yurganda
+    if (selectedPiece?.type == ChessPiecesType.pawn &&
+        (selectedRow - newRow).abs() == 2) {
+      enPassantTarget = [newRow, newCol];
+    } else {
+      enPassantTarget = null;
+    }
+
+    // Rokada harakati - shoh 2 katak yurganda turni ham ko'chirish
     if (selectedPiece?.type == ChessPiecesType.king) {
+      int colDiff = newCol - selectedCol;
+
+      if (colDiff == 2) {
+        // Qisqa rokada (O-O) - tura o'ng tomondan
+        if (selectedPiece!.isWhite) {
+          board[7][5] = board[7][7]; // Tura yangi joyga
+          board[7][7] = null;
+        } else {
+          board[0][5] = board[0][7];
+          board[0][7] = null;
+        }
+      } else if (colDiff == -2) {
+        // Uzun rokada (O-O-O) - tura chap tomondan
+        if (selectedPiece!.isWhite) {
+          board[7][3] = board[7][0];
+          board[7][0] = null;
+        } else {
+          board[0][3] = board[0][0];
+          board[0][0] = null;
+        }
+      }
+
+      // Shoh pozitsiyasini yangilash
       if (selectedPiece!.isWhite) {
         whiteKingPosition = [newRow, newCol];
+        whiteKingMoved = true;
       } else {
         blackKingPosition = [newRow, newCol];
+        blackKingMoved = true;
       }
     }
 
+    // Tura harakatini kuzatish (rokada uchun)
+    if (selectedPiece?.type == ChessPiecesType.rook) {
+      if (selectedPiece!.isWhite) {
+        if (selectedRow == 7 && selectedCol == 0) whiteLeftRookMoved = true;
+        if (selectedRow == 7 && selectedCol == 7) whiteRightRookMoved = true;
+      } else {
+        if (selectedRow == 0 && selectedCol == 0) blackLeftRookMoved = true;
+        if (selectedRow == 0 && selectedCol == 7) blackRightRookMoved = true;
+      }
+    }
+
+    // Donani yangi joyga ko'chirish
     board[newRow][newCol] = selectedPiece;
     board[selectedRow][selectedCol] = null;
+
+    // Piyoda promotion - oxirgi qatorga yetganda
+    if (selectedPiece?.type == ChessPiecesType.pawn) {
+      if ((selectedPiece!.isWhite && newRow == 0) ||
+          (!selectedPiece!.isWhite && newRow == 7)) {
+        _showPromotionDialog(newRow, newCol, selectedPiece!.isWhite);
+      }
+    }
 
     if (isKingInCheck(!isWhiteTurn)) {
       checkStatus = true;
@@ -416,19 +565,99 @@ class _BoardGameState extends State<BoardGame> {
       validMoves = [];
     });
 
+    // Checkmate yoki Stalemate tekshirish
     if (isCheckMate(!isWhiteTurn)) {
       showDialog(
           context: context,
           builder: (context) => AlertDialog(
-                title: Text("CHECK MATE"),
+                title: const Text("SHOH MAT!"),
+                content: Text(isWhiteTurn ? "Qora g'alaba qozondi!" : "Oq g'alaba qozondi!"),
                 actions: [
                   TextButton(
-                      onPressed: resetGame, child: Text("Restart The Game"))
+                      onPressed: resetGame, child: const Text("Qayta boshlash"))
+                ],
+              ));
+    } else if (isStalemate(!isWhiteTurn)) {
+      showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+                title: const Text("PAT!"),
+                content: const Text("O'yin durrang bilan tugadi."),
+                actions: [
+                  TextButton(
+                      onPressed: resetGame, child: const Text("Qayta boshlash"))
                 ],
               ));
     }
 
     isWhiteTurn = !isWhiteTurn;
+  }
+
+  // Piyoda promotion dialog
+  void _showPromotionDialog(int row, int col, bool isWhite) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: const Text("Piyodani almashtiring"),
+        content: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: [
+            _promotionOption(row, col, ChessPiecesType.queen, isWhite),
+            _promotionOption(row, col, ChessPiecesType.rook, isWhite),
+            _promotionOption(row, col, ChessPiecesType.bishop, isWhite),
+            _promotionOption(row, col, ChessPiecesType.knight, isWhite),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _promotionOption(int row, int col, ChessPiecesType type, bool isWhite) {
+    String imagePath;
+    switch (type) {
+      case ChessPiecesType.queen:
+        imagePath = 'images/queen.png';
+        break;
+      case ChessPiecesType.rook:
+        imagePath = 'images/rook.png';
+        break;
+      case ChessPiecesType.bishop:
+        imagePath = 'images/bishop.png';
+        break;
+      case ChessPiecesType.knight:
+        imagePath = 'images/knight.png';
+        break;
+      default:
+        imagePath = 'images/queen.png';
+    }
+
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          board[row][col] = ChessPiece(
+            type: type,
+            isWhite: isWhite,
+            imagePath: imagePath,
+          );
+        });
+        Navigator.pop(context);
+      },
+      child: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: isWhite ? Colors.white : Colors.grey[800],
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.black),
+        ),
+        child: Image.asset(
+          imagePath,
+          height: 40,
+          width: 40,
+          color: isWhite ? null : Colors.black,
+        ),
+      ),
+    );
   }
 
   bool isKingInCheck(bool isWhiteKing) {
@@ -445,6 +674,26 @@ class _BoardGameState extends State<BoardGame> {
 
         for (List<int> move in pieceValidMoves) {
           if (move[0] == kingPosition[0] && move[1] == kingPosition[1]) {
+            return true;
+          }
+        }
+      }
+    }
+    return false;
+  }
+
+  // Berilgan katak raqib donalar tomonidan hujum ostida yoki yo'qligini tekshirish
+  bool isSquareUnderAttack(int row, int col, bool isWhite) {
+    for (int i = 0; i < 8; i++) {
+      for (int j = 0; j < 8; j++) {
+        if (board[i][j] == null || board[i][j]!.isWhite == isWhite) {
+          continue;
+        }
+        List<List<int>> pieceValidMoves =
+            calculateRowValidMoves(i, j, board[i][j]);
+
+        for (List<int> move in pieceValidMoves) {
+          if (move[0] == row && move[1] == col) {
             return true;
           }
         }
@@ -506,6 +755,29 @@ class _BoardGameState extends State<BoardGame> {
     return true;
   }
 
+  // Pat holati - shoh hujum ostida emas, lekin hech qanday legal yurish yo'q
+  bool isStalemate(bool isWhiteKing) {
+    // Agar shoh hujum ostida bo'lsa, bu pat emas
+    if (isKingInCheck(isWhiteKing)) {
+      return false;
+    }
+
+    // Har bir dona uchun legal yurish bor yoki yo'qligini tekshirish
+    for (int i = 0; i < 8; i++) {
+      for (int j = 0; j < 8; j++) {
+        if (board[i][j] == null || board[i][j]!.isWhite != isWhiteKing) {
+          continue;
+        }
+        List<List<int>> validMoves =
+            calculateRealValidMoves(i, j, board[i][j]!, true);
+        if (validMoves.isNotEmpty) {
+          return false; // Kamida bitta legal yurish bor
+        }
+      }
+    }
+    return true; // Hech qanday legal yurish yo'q = PAT
+  }
+
   void resetGame() {
     Navigator.pop(context);
     _initializeBoard();
@@ -515,6 +787,14 @@ class _BoardGameState extends State<BoardGame> {
     whiteKingPosition = [7, 4];
     blackKingPosition = [0, 4];
     isWhiteTurn = true;
+    // Yangi state o'zgaruvchilarni tozalash
+    enPassantTarget = null;
+    whiteKingMoved = false;
+    blackKingMoved = false;
+    whiteLeftRookMoved = false;
+    whiteRightRookMoved = false;
+    blackLeftRookMoved = false;
+    blackRightRookMoved = false;
     setState(() {});
   }
 
