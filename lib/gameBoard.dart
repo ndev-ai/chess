@@ -827,6 +827,11 @@ class _BoardGameState extends State<BoardGame> {
 
   void resetGame() {
     Navigator.pop(context);
+    _resetGameState();
+  }
+
+  // Dialog ochilmagan holda o'yinni qayta boshlash
+  void _resetGameState() {
     _initializeBoard();
     checkStatus = false;
     whitePiecesTaken.clear();
@@ -842,7 +847,55 @@ class _BoardGameState extends State<BoardGame> {
     whiteRightRookMoved = false;
     blackLeftRookMoved = false;
     blackRightRookMoved = false;
+    selectedPiece = null;
+    selectedRow = -1;
+    selectedCol = -1;
+    validMoves = [];
     setState(() {});
+  }
+
+  // O'yinni qayta boshlash (tugma orqali)
+  void restartGame() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Qayta boshlash"),
+        content: const Text("O'yinni qayta boshlamoqchimisiz?"),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Yo'q"),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _resetGameState();
+            },
+            child: const Text("Ha"),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Resign qilish
+  void resign(bool isWhiteResigning) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(isWhiteResigning ? "Oq taslim bo'ldi!" : "Qora taslim bo'ldi!"),
+        content: Text(isWhiteResigning ? "Qora g'alaba qozondi!" : "Oq g'alaba qozondi!"),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _resetGameState();
+            },
+            child: const Text("Yangi o'yin"),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -851,6 +904,34 @@ class _BoardGameState extends State<BoardGame> {
       backgroundColor: Colors.white30,
       body: Column(
         children: [
+          // Qora o'yinchi uchun resign tugmasi
+          Padding(
+            padding: const EdgeInsets.only(top: 40, left: 8, right: 8),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  "Qora",
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.grey[800],
+                  ),
+                ),
+                ElevatedButton.icon(
+                  onPressed: () => resign(false),
+                  icon: const Icon(Icons.flag, size: 16),
+                  label: const Text("Taslim"),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.grey[800],
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Qora o'yinchi o'ldirilgan donalari
           Expanded(
             child: GridView.builder(
               physics: const NeverScrollableScrollPhysics(),
@@ -863,7 +944,41 @@ class _BoardGameState extends State<BoardGame> {
               ),
             ), // GridView.builder
           ), // Expanded
-          Text(checkStatus ? "CHECK" : ""),
+          // CHECK holati va Qayta boshlash tugmasi
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                if (checkStatus)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.red,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: const Text(
+                      "SHOH!",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                const SizedBox(width: 16),
+                Text(
+                  isWhiteTurn ? "Oq yuradi" : "Qora yuradi",
+                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                ),
+                const SizedBox(width: 16),
+                IconButton(
+                  onPressed: restartGame,
+                  icon: const Icon(Icons.refresh),
+                  tooltip: "Qayta boshlash",
+                ),
+              ],
+            ),
+          ),
           Expanded(
             flex: 3,
             child: GridView.builder(
@@ -895,18 +1010,46 @@ class _BoardGameState extends State<BoardGame> {
             ),
           ),
 
+          // Oq o'yinchi o'ldirilgan donalari
           Expanded(
             child: GridView.builder(
               physics: const NeverScrollableScrollPhysics(),
               itemCount: blackPiecesTaken.length,
               gridDelegate:
-                  SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 8),
+                  const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 8),
               itemBuilder: (context, index) => DeadPiece(
                 imagePath: blackPiecesTaken[index].imagePath,
                 isWhite: false,
               ),
             ), // GridView.builder
           ), // Expanded
+          // Oq o'yinchi uchun resign tugmasi
+          Padding(
+            padding: const EdgeInsets.only(bottom: 20, left: 8, right: 8),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  "Oq",
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.grey[600],
+                  ),
+                ),
+                ElevatedButton.icon(
+                  onPressed: () => resign(true),
+                  icon: const Icon(Icons.flag, size: 16),
+                  label: const Text("Taslim"),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.white,
+                    foregroundColor: Colors.grey[800],
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
