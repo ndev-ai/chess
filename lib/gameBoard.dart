@@ -180,7 +180,7 @@ class _BoardGameState extends State<BoardGame> {
     });
   }
 
-  List<List<int>> calculateRowValidMoves(int row, int col, ChessPiece? piece) {
+  List<List<int>> calculateRowValidMoves(int row, int col, ChessPiece? piece, {bool checkCastling = true}) {
     List<List<int>> candidateMoves = [];
 
     if (piece == null) {
@@ -384,54 +384,56 @@ class _BoardGameState extends State<BoardGame> {
           candidateMoves.add([newRow, newCol]);
         }
 
-        // Rokada (Castling)
-        if (piece.isWhite && !whiteKingMoved && !isKingInCheck(true)) {
-          // Oq shoh qisqa rokada (O-O) - o'ng tomonga
-          if (!whiteRightRookMoved &&
-              board[7][5] == null &&
-              board[7][6] == null &&
-              board[7][7]?.type == ChessPiecesType.rook &&
-              board[7][7]?.isWhite == true) {
-            // Shoh o'tadigan kataklar xavfsiz ekanligini tekshirish
-            if (!isSquareUnderAttack(7, 5, true) &&
-                !isSquareUnderAttack(7, 6, true)) {
-              candidateMoves.add([7, 6]); // Qisqa rokada
+        // Rokada (Castling) - faqat checkCastling true bo'lganda tekshiriladi
+        if (checkCastling) {
+          if (piece.isWhite && !whiteKingMoved && !isKingInCheckSimple(true)) {
+            // Oq shoh qisqa rokada (O-O) - o'ng tomonga
+            if (!whiteRightRookMoved &&
+                board[7][5] == null &&
+                board[7][6] == null &&
+                board[7][7]?.type == ChessPiecesType.rook &&
+                board[7][7]?.isWhite == true) {
+              // Shoh o'tadigan kataklar xavfsiz ekanligini tekshirish
+              if (!isSquareUnderAttackSimple(7, 5, true) &&
+                  !isSquareUnderAttackSimple(7, 6, true)) {
+                candidateMoves.add([7, 6]); // Qisqa rokada
+              }
             }
-          }
-          // Oq shoh uzun rokada (O-O-O) - chap tomonga
-          if (!whiteLeftRookMoved &&
-              board[7][1] == null &&
-              board[7][2] == null &&
-              board[7][3] == null &&
-              board[7][0]?.type == ChessPiecesType.rook &&
-              board[7][0]?.isWhite == true) {
-            if (!isSquareUnderAttack(7, 2, true) &&
-                !isSquareUnderAttack(7, 3, true)) {
-              candidateMoves.add([7, 2]); // Uzun rokada
+            // Oq shoh uzun rokada (O-O-O) - chap tomonga
+            if (!whiteLeftRookMoved &&
+                board[7][1] == null &&
+                board[7][2] == null &&
+                board[7][3] == null &&
+                board[7][0]?.type == ChessPiecesType.rook &&
+                board[7][0]?.isWhite == true) {
+              if (!isSquareUnderAttackSimple(7, 2, true) &&
+                  !isSquareUnderAttackSimple(7, 3, true)) {
+                candidateMoves.add([7, 2]); // Uzun rokada
+              }
             }
-          }
-        } else if (!piece.isWhite && !blackKingMoved && !isKingInCheck(false)) {
-          // Qora shoh qisqa rokada
-          if (!blackRightRookMoved &&
-              board[0][5] == null &&
-              board[0][6] == null &&
-              board[0][7]?.type == ChessPiecesType.rook &&
-              board[0][7]?.isWhite == false) {
-            if (!isSquareUnderAttack(0, 5, false) &&
-                !isSquareUnderAttack(0, 6, false)) {
-              candidateMoves.add([0, 6]);
+          } else if (!piece.isWhite && !blackKingMoved && !isKingInCheckSimple(false)) {
+            // Qora shoh qisqa rokada
+            if (!blackRightRookMoved &&
+                board[0][5] == null &&
+                board[0][6] == null &&
+                board[0][7]?.type == ChessPiecesType.rook &&
+                board[0][7]?.isWhite == false) {
+              if (!isSquareUnderAttackSimple(0, 5, false) &&
+                  !isSquareUnderAttackSimple(0, 6, false)) {
+                candidateMoves.add([0, 6]);
+              }
             }
-          }
-          // Qora shoh uzun rokada
-          if (!blackLeftRookMoved &&
-              board[0][1] == null &&
-              board[0][2] == null &&
-              board[0][3] == null &&
-              board[0][0]?.type == ChessPiecesType.rook &&
-              board[0][0]?.isWhite == false) {
-            if (!isSquareUnderAttack(0, 2, false) &&
-                !isSquareUnderAttack(0, 3, false)) {
-              candidateMoves.add([0, 2]);
+            // Qora shoh uzun rokada
+            if (!blackLeftRookMoved &&
+                board[0][1] == null &&
+                board[0][2] == null &&
+                board[0][3] == null &&
+                board[0][0]?.type == ChessPiecesType.rook &&
+                board[0][0]?.isWhite == false) {
+              if (!isSquareUnderAttackSimple(0, 2, false) &&
+                  !isSquareUnderAttackSimple(0, 3, false)) {
+                candidateMoves.add([0, 2]);
+              }
             }
           }
         }
@@ -694,6 +696,51 @@ class _BoardGameState extends State<BoardGame> {
 
         for (List<int> move in pieceValidMoves) {
           if (move[0] == row && move[1] == col) {
+            return true;
+          }
+        }
+      }
+    }
+    return false;
+  }
+
+  // Rekursiyasiz sodda versiya - rokada tekshirish uchun
+  bool isSquareUnderAttackSimple(int row, int col, bool isWhite) {
+    for (int i = 0; i < 8; i++) {
+      for (int j = 0; j < 8; j++) {
+        if (board[i][j] == null || board[i][j]!.isWhite == isWhite) {
+          continue;
+        }
+        // checkCastling: false - rekursiyani oldini olish uchun
+        List<List<int>> pieceValidMoves =
+            calculateRowValidMoves(i, j, board[i][j], checkCastling: false);
+
+        for (List<int> move in pieceValidMoves) {
+          if (move[0] == row && move[1] == col) {
+            return true;
+          }
+        }
+      }
+    }
+    return false;
+  }
+
+  // Rekursiyasiz sodda versiya - rokada tekshirish uchun
+  bool isKingInCheckSimple(bool isWhiteKing) {
+    List<int> kingPosition =
+        isWhiteKing ? whiteKingPosition : blackKingPosition;
+
+    for (int i = 0; i < 8; i++) {
+      for (int j = 0; j < 8; j++) {
+        if (board[i][j] == null || board[i][j]!.isWhite == isWhiteKing) {
+          continue;
+        }
+        // checkCastling: false - rekursiyani oldini olish uchun
+        List<List<int>> pieceValidMoves =
+            calculateRowValidMoves(i, j, board[i][j], checkCastling: false);
+
+        for (List<int> move in pieceValidMoves) {
+          if (move[0] == kingPosition[0] && move[1] == kingPosition[1]) {
             return true;
           }
         }
