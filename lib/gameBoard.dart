@@ -6,6 +6,41 @@ import 'package:flutter/material.dart';
 import 'components/dead_piece.dart';
 import 'helper/helper_function.dart';
 
+// O'yin holatini saqlash uchun class
+class GameState {
+  final List<List<ChessPiece?>> board;
+  final List<ChessPiece> whitePiecesTaken;
+  final List<ChessPiece> blackPiecesTaken;
+  final bool isWhiteTurn;
+  final List<int> whiteKingPosition;
+  final List<int> blackKingPosition;
+  final bool checkStatus;
+  final List<int>? enPassantTarget;
+  final bool whiteKingMoved;
+  final bool blackKingMoved;
+  final bool whiteLeftRookMoved;
+  final bool whiteRightRookMoved;
+  final bool blackLeftRookMoved;
+  final bool blackRightRookMoved;
+
+  GameState({
+    required this.board,
+    required this.whitePiecesTaken,
+    required this.blackPiecesTaken,
+    required this.isWhiteTurn,
+    required this.whiteKingPosition,
+    required this.blackKingPosition,
+    required this.checkStatus,
+    required this.enPassantTarget,
+    required this.whiteKingMoved,
+    required this.blackKingMoved,
+    required this.whiteLeftRookMoved,
+    required this.whiteRightRookMoved,
+    required this.blackLeftRookMoved,
+    required this.blackRightRookMoved,
+  });
+}
+
 class BoardGame extends StatefulWidget {
   const BoardGame({Key? key}) : super(key: key);
 
@@ -48,10 +83,16 @@ class _BoardGameState extends State<BoardGame> {
   bool blackLeftRookMoved = false;
   bool blackRightRookMoved = false;
 
+  // Move history uchun
+  List<GameState> moveHistory = [];
+  int currentMoveIndex = -1;
+
   @override
   void initState() {
     super.initState();
     _initializeBoard();
+    // Boshlang'ich holatni saqlash
+    _saveState();
   }
 
   void _initializeBoard() {
@@ -593,6 +634,9 @@ class _BoardGameState extends State<BoardGame> {
     }
 
     isWhiteTurn = !isWhiteTurn;
+
+    // Harakatni tarixga saqlash
+    _saveState();
   }
 
   // Piyoda promotion dialog
@@ -851,8 +895,92 @@ class _BoardGameState extends State<BoardGame> {
     selectedRow = -1;
     selectedCol = -1;
     validMoves = [];
+    // History tozalash
+    moveHistory.clear();
+    currentMoveIndex = -1;
+    // Boshlang'ich holatni saqlash
+    _saveState();
     setState(() {});
   }
+
+  // Joriy holatni saqlash
+  void _saveState() {
+    // Agar back qilib, yangi yurish qilsak, old historyni o'chiramiz
+    if (currentMoveIndex < moveHistory.length - 1) {
+      moveHistory.removeRange(currentMoveIndex + 1, moveHistory.length);
+    }
+
+    // Board nusxasini yaratish
+    List<List<ChessPiece?>> boardCopy = List.generate(
+      8,
+      (i) => List.generate(8, (j) => board[i][j]),
+    );
+
+    moveHistory.add(GameState(
+      board: boardCopy,
+      whitePiecesTaken: List.from(whitePiecesTaken),
+      blackPiecesTaken: List.from(blackPiecesTaken),
+      isWhiteTurn: isWhiteTurn,
+      whiteKingPosition: List.from(whiteKingPosition),
+      blackKingPosition: List.from(blackKingPosition),
+      checkStatus: checkStatus,
+      enPassantTarget: enPassantTarget != null ? List.from(enPassantTarget!) : null,
+      whiteKingMoved: whiteKingMoved,
+      blackKingMoved: blackKingMoved,
+      whiteLeftRookMoved: whiteLeftRookMoved,
+      whiteRightRookMoved: whiteRightRookMoved,
+      blackLeftRookMoved: blackLeftRookMoved,
+      blackRightRookMoved: blackRightRookMoved,
+    ));
+    currentMoveIndex = moveHistory.length - 1;
+  }
+
+  // Holatni tiklash
+  void _restoreState(GameState state) {
+    board = List.generate(
+      8,
+      (i) => List.generate(8, (j) => state.board[i][j]),
+    );
+    whitePiecesTaken = List.from(state.whitePiecesTaken);
+    blackPiecesTaken = List.from(state.blackPiecesTaken);
+    isWhiteTurn = state.isWhiteTurn;
+    whiteKingPosition = List.from(state.whiteKingPosition);
+    blackKingPosition = List.from(state.blackKingPosition);
+    checkStatus = state.checkStatus;
+    enPassantTarget = state.enPassantTarget != null ? List.from(state.enPassantTarget!) : null;
+    whiteKingMoved = state.whiteKingMoved;
+    blackKingMoved = state.blackKingMoved;
+    whiteLeftRookMoved = state.whiteLeftRookMoved;
+    whiteRightRookMoved = state.whiteRightRookMoved;
+    blackLeftRookMoved = state.blackLeftRookMoved;
+    blackRightRookMoved = state.blackRightRookMoved;
+    selectedPiece = null;
+    selectedRow = -1;
+    selectedCol = -1;
+    validMoves = [];
+  }
+
+  // Orqaga qaytish (Undo)
+  void goBack() {
+    if (currentMoveIndex > 0) {
+      currentMoveIndex--;
+      _restoreState(moveHistory[currentMoveIndex]);
+      setState(() {});
+    }
+  }
+
+  // Oldinga o'tish (Redo)
+  void goForward() {
+    if (currentMoveIndex < moveHistory.length - 1) {
+      currentMoveIndex++;
+      _restoreState(moveHistory[currentMoveIndex]);
+      setState(() {});
+    }
+  }
+
+  // Back/Forward tugmalari yoqilganmi
+  bool get canGoBack => currentMoveIndex > 0;
+  bool get canGoForward => currentMoveIndex < moveHistory.length - 1;
 
   // O'yinni qayta boshlash (tugma orqali)
   void restartGame() {
@@ -1035,7 +1163,7 @@ class _BoardGameState extends State<BoardGame> {
             const Spacer(),
             // Status va boshqaruv paneli
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
                 color: Colors.grey[200],
                 borderRadius: BorderRadius.circular(8),
@@ -1043,10 +1171,36 @@ class _BoardGameState extends State<BoardGame> {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
+                  // Back tugmasi
+                  IconButton(
+                    onPressed: canGoBack ? goBack : null,
+                    icon: Icon(
+                      Icons.arrow_back_ios,
+                      size: 18,
+                      color: canGoBack ? Colors.grey[800] : Colors.grey[400],
+                    ),
+                    tooltip: "Orqaga",
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                  ),
+                  const SizedBox(width: 8),
+                  // Forward tugmasi
+                  IconButton(
+                    onPressed: canGoForward ? goForward : null,
+                    icon: Icon(
+                      Icons.arrow_forward_ios,
+                      size: 18,
+                      color: canGoForward ? Colors.grey[800] : Colors.grey[400],
+                    ),
+                    tooltip: "Oldinga",
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                  ),
+                  const SizedBox(width: 12),
                   if (checkStatus)
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                      margin: const EdgeInsets.only(right: 12),
+                      margin: const EdgeInsets.only(right: 8),
                       decoration: BoxDecoration(
                         color: Colors.red,
                         borderRadius: BorderRadius.circular(4),
@@ -1069,15 +1223,15 @@ class _BoardGameState extends State<BoardGame> {
                       border: Border.all(color: Colors.grey),
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 6),
                   Text(
-                    isWhiteTurn ? "Oq yuradi" : "Qora yuradi",
-                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                    isWhiteTurn ? "Oq" : "Qora",
+                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
                   ),
-                  const SizedBox(width: 16),
+                  const SizedBox(width: 12),
                   IconButton(
                     onPressed: restartGame,
-                    icon: const Icon(Icons.refresh, size: 20),
+                    icon: const Icon(Icons.refresh, size: 18),
                     tooltip: "Qayta boshlash",
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(),
