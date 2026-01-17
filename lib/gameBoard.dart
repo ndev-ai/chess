@@ -901,156 +901,193 @@ class _BoardGameState extends State<BoardGame> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white30,
-      body: Column(
-        children: [
-          // Qora o'yinchi uchun resign tugmasi
-          Padding(
-            padding: const EdgeInsets.only(top: 40, left: 8, right: 8),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  "Qora",
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.grey[800],
+      backgroundColor: Colors.grey[300],
+      body: SafeArea(
+        child: Column(
+          children: [
+            // Qora o'yinchi paneli
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        width: 12,
+                        height: 12,
+                        decoration: BoxDecoration(
+                          color: Colors.grey[800],
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      const Text(
+                        "Qora",
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ],
                   ),
-                ),
-                ElevatedButton.icon(
-                  onPressed: () => resign(false),
-                  icon: const Icon(Icons.flag, size: 16),
-                  label: const Text("Taslim"),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.grey[800],
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          // Qora o'yinchi o'ldirilgan donalari
-          Expanded(
-            child: GridView.builder(
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: whitePiecesTaken.length,
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 8),
-              itemBuilder: (context, index) => DeadPiece(
-                imagePath: whitePiecesTaken[index].imagePath,
-                isWhite: true,
-              ),
-            ), // GridView.builder
-          ), // Expanded
-          // CHECK holati va Qayta boshlash tugmasi
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 4),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                if (checkStatus)
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: Colors.red,
-                      borderRadius: BorderRadius.circular(4),
+                  TextButton.icon(
+                    onPressed: () => resign(false),
+                    icon: const Icon(Icons.flag, size: 14),
+                    label: const Text("Taslim", style: TextStyle(fontSize: 12)),
+                    style: TextButton.styleFrom(
+                      foregroundColor: Colors.grey[800],
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
                     ),
-                    child: const Text(
-                      "SHOH!",
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
+                  ),
+                ],
+              ),
+            ),
+            // Qora tomondan olingan donalar (oq donalar)
+            SizedBox(
+              height: 32,
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                itemCount: whitePiecesTaken.length,
+                itemBuilder: (context, index) => DeadPiece(
+                  imagePath: whitePiecesTaken[index].imagePath,
+                  isWhite: true,
+                ),
+              ),
+            ),
+            const SizedBox(height: 4),
+            // Shaxmat taxtasi
+            AspectRatio(
+              aspectRatio: 1,
+              child: GridView.builder(
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: 8 * 8,
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 8),
+                itemBuilder: (context, index) {
+                  int row = index ~/ 8;
+                  int col = index % 8;
+
+                  bool isSelected = selectedCol == col && selectedRow == row;
+                  bool isValidMove = false;
+                  for (var position in validMoves) {
+                    if (position[0] == row && position[1] == col) {
+                      isValidMove = true;
+                    }
+                  }
+
+                  return Square(
+                    isValidMove: isValidMove,
+                    onTap: () => pieceSelected(row, col),
+                    isSelected: isSelected,
+                    isWhite: isWhite(index),
+                    piece: board[row][col],
+                  );
+                },
+              ),
+            ),
+            const SizedBox(height: 4),
+            // Oq tomondan olingan donalar (qora donalar)
+            SizedBox(
+              height: 32,
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                itemCount: blackPiecesTaken.length,
+                itemBuilder: (context, index) => DeadPiece(
+                  imagePath: blackPiecesTaken[index].imagePath,
+                  isWhite: false,
+                ),
+              ),
+            ),
+            // Oq o'yinchi paneli
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        width: 12,
+                        height: 12,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.grey),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      const Text(
+                        "Oq",
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
+                  TextButton.icon(
+                    onPressed: () => resign(true),
+                    icon: const Icon(Icons.flag, size: 14),
+                    label: const Text("Taslim", style: TextStyle(fontSize: 12)),
+                    style: TextButton.styleFrom(
+                      foregroundColor: Colors.grey[700],
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Spacer(),
+            // Status va boshqaruv paneli
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.grey[200],
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (checkStatus)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      margin: const EdgeInsets.only(right: 12),
+                      decoration: BoxDecoration(
+                        color: Colors.red,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: const Text(
+                        "SHOH!",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                        ),
                       ),
                     ),
+                  Container(
+                    width: 10,
+                    height: 10,
+                    decoration: BoxDecoration(
+                      color: isWhiteTurn ? Colors.white : Colors.grey[800],
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.grey),
+                    ),
                   ),
-                const SizedBox(width: 16),
-                Text(
-                  isWhiteTurn ? "Oq yuradi" : "Qora yuradi",
-                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
-                ),
-                const SizedBox(width: 16),
-                IconButton(
-                  onPressed: restartGame,
-                  icon: const Icon(Icons.refresh),
-                  tooltip: "Qayta boshlash",
-                ),
-              ],
-            ),
-          ),
-          Expanded(
-            flex: 3,
-            child: GridView.builder(
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: 8 * 8,
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 8),
-              itemBuilder: (context, index) {
-                int row = index ~/ 8;
-                int col = index % 8;
-
-                bool isSelected = selectedCol == col && selectedRow == row;
-                bool isValidMove = false;
-                for (var position in validMoves) {
-                  // compare row and col
-                  if (position[0] == row && position[1] == col) {
-                    isValidMove = true;
-                  }
-                }
-
-                return Square(
-                  isValidMove: isValidMove,
-                  onTap: () => pieceSelected(row, col),
-                  isSelected: isSelected,
-                  isWhite: isWhite(index),
-                  piece: board[row][col],
-                );
-              },
-            ),
-          ),
-
-          // Oq o'yinchi o'ldirilgan donalari
-          Expanded(
-            child: GridView.builder(
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: blackPiecesTaken.length,
-              gridDelegate:
-                  const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 8),
-              itemBuilder: (context, index) => DeadPiece(
-                imagePath: blackPiecesTaken[index].imagePath,
-                isWhite: false,
+                  const SizedBox(width: 8),
+                  Text(
+                    isWhiteTurn ? "Oq yuradi" : "Qora yuradi",
+                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                  ),
+                  const SizedBox(width: 16),
+                  IconButton(
+                    onPressed: restartGame,
+                    icon: const Icon(Icons.refresh, size: 20),
+                    tooltip: "Qayta boshlash",
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                  ),
+                ],
               ),
-            ), // GridView.builder
-          ), // Expanded
-          // Oq o'yinchi uchun resign tugmasi
-          Padding(
-            padding: const EdgeInsets.only(bottom: 20, left: 8, right: 8),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  "Oq",
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.grey[600],
-                  ),
-                ),
-                ElevatedButton.icon(
-                  onPressed: () => resign(true),
-                  icon: const Icon(Icons.flag, size: 16),
-                  label: const Text("Taslim"),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white,
-                    foregroundColor: Colors.grey[800],
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  ),
-                ),
-              ],
             ),
-          ),
-        ],
+            const SizedBox(height: 16),
+          ],
+        ),
       ),
     );
   }
