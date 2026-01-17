@@ -1070,57 +1070,72 @@ class _BoardGameState extends State<BoardGame> {
             ),
             // Qora tomondan olingan donalar (oq donalar)
             SizedBox(
-              height: 32,
-              child: ListView.builder(
-                scrollDirection: Axis.horizontal,
-                itemCount: whitePiecesTaken.length,
-                itemBuilder: (context, index) => DeadPiece(
-                  imagePath: whitePiecesTaken[index].imagePath,
-                  isWhite: true,
+              height: 44,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                child: ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: whitePiecesTaken.length,
+                  itemBuilder: (context, index) => DeadPiece(
+                    imagePath: whitePiecesTaken[index].imagePath,
+                    isWhite: true,
+                  ),
                 ),
               ),
             ),
-            const SizedBox(height: 4),
-            // Shaxmat taxtasi
-            AspectRatio(
-              aspectRatio: 1,
-              child: GridView.builder(
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: 8 * 8,
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 8),
-                itemBuilder: (context, index) {
-                  int row = index ~/ 8;
-                  int col = index % 8;
+            const SizedBox(height: 8),
+            // Shaxmat taxtasi - markazda
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: AspectRatio(
+                aspectRatio: 1,
+                child: Container(
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.brown, width: 3),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: GridView.builder(
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: 8 * 8,
+                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 8),
+                    itemBuilder: (context, index) {
+                      int row = index ~/ 8;
+                      int col = index % 8;
 
-                  bool isSelected = selectedCol == col && selectedRow == row;
-                  bool isValidMove = false;
-                  for (var position in validMoves) {
-                    if (position[0] == row && position[1] == col) {
-                      isValidMove = true;
-                    }
-                  }
+                      bool isSelected = selectedCol == col && selectedRow == row;
+                      bool isValidMove = false;
+                      for (var position in validMoves) {
+                        if (position[0] == row && position[1] == col) {
+                          isValidMove = true;
+                        }
+                      }
 
-                  return Square(
-                    isValidMove: isValidMove,
-                    onTap: () => pieceSelected(row, col),
-                    isSelected: isSelected,
-                    isWhite: isWhite(index),
-                    piece: board[row][col],
-                  );
-                },
+                      return Square(
+                        isValidMove: isValidMove,
+                        onTap: () => pieceSelected(row, col),
+                        isSelected: isSelected,
+                        isWhite: isWhite(index),
+                        piece: board[row][col],
+                      );
+                    },
+                  ),
+                ),
               ),
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 8),
             // Oq tomondan olingan donalar (qora donalar)
             SizedBox(
-              height: 32,
-              child: ListView.builder(
-                scrollDirection: Axis.horizontal,
-                itemCount: blackPiecesTaken.length,
-                itemBuilder: (context, index) => DeadPiece(
-                  imagePath: blackPiecesTaken[index].imagePath,
-                  isWhite: false,
+              height: 44,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                child: ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: blackPiecesTaken.length,
+                  itemBuilder: (context, index) => DeadPiece(
+                    imagePath: blackPiecesTaken[index].imagePath,
+                    isWhite: false,
+                  ),
                 ),
               ),
             ),
